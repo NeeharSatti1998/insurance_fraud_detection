@@ -1,0 +1,39 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+*.env
+
+# Streamlit history
+streamlit_app/history.json
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
+*.pid
+*.pkl
+
+# IDE
+.vscode/
+.idea/
+
+# Build files
+dist/
+build/
+
+# Notebooks (optional)
+*.ipynb_checkpoints/
+
+*.pem
+.history.json
+test.py
+*.dll
+*.so
+*.exe
