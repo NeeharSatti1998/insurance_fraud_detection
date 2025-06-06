@@ -5,11 +5,12 @@ import pandas as pd
 import numpy as np
 import os
 import boto3
+import mysql.connector
 
 app = FastAPI()
 
 # --- S3 Model Loading ---
-MODEL_DIR = "/tmp/model"  # Temporary dir in container
+MODEL_DIR = "/tmp/model"
 MODEL_PATH = os.path.join(MODEL_DIR, "soft_voting_model_1.pkl")
 COLUMNS_PATH = os.path.join(MODEL_DIR, "model_columns.pkl")
 
@@ -30,6 +31,15 @@ download_if_not_exists("model_columns.pkl", COLUMNS_PATH)
 
 model = joblib.load(MODEL_PATH)
 model_columns = joblib.load(COLUMNS_PATH)
+
+# --- RDS Configuration ---
+DB_CONFIG = {
+    'host': 'insurance-fraud-db.cobaiu8aw8xi.us-east-1.rds.amazonaws.com',
+    'user': 'admin',
+    'password': 'NeeharSatti1998',
+    'database': 'insurance_fraud_db',
+    'port': 3306
+}
 
 # --- Input Schema ---
 class InsuranceClaim(BaseModel):
@@ -66,9 +76,47 @@ def preprocess_input(data: dict):
     df_encoded = df_encoded.reindex(columns=model_columns, fill_value=0)
     return df_encoded
 
-# --- Store Prediction (RDS DISABLED) ---
+# --- Store Prediction to RDS ---
 def store_prediction(input_data, prediction_result, probability):
-    print("RDS storage skipped (disabled during EC2/S3 testing phase).")
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+
+        query = """
+        INSERT INTO predictions (
+            age, policy_state, policy_csl, policy_deductable, umbrella_limit,
+            insured_sex, insured_education_level, insured_occupation,
+            insured_hobbies, insured_relationship, incident_type, collision_type,
+            incident_severity, authorities_contacted, incident_state, incident_city,
+            number_of_vehicles_involved, bodily_injuries, witnesses, police_report_available,
+            total_claim_amount, auto_make, auto_model, auto_year, claim_ratio_bin,
+            prediction, probability
+        ) VALUES (%s, %s, %s, %s, %s,
+                  %s, %s, %s, %s, %s,
+                  %s, %s, %s, %s, %s,
+                  %s, %s, %s, %s, %s,
+                  %s, %s, %s, %s, %s,
+                  %s, %s)
+        """
+
+        values = (
+            input_data["age"], input_data["policy_state"], input_data["policy_csl"], input_data["policy_deductable"], input_data["umbrella_limit"],
+            input_data["insured_sex"], input_data["insured_education_level"], input_data["insured_occupation"],
+            input_data["insured_hobbies"], input_data["insured_relationship"], input_data["incident_type"], input_data["collision_type"],
+            input_data["incident_severity"], input_data["authorities_contacted"], input_data["incident_state"], input_data["incident_city"],
+            input_data["number_of_vehicles_involved"], input_data["bodily_injuries"], input_data["witnesses"], input_data["police_report_available"],
+            input_data["total_claim_amount"], input_data["auto_make"], input_data["auto_model"], input_data["auto_year"], input_data["claim_ratio_bin"],
+            prediction_result, probability
+        )
+
+        cursor.execute(query, values)
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        print("Prediction stored in RDS")
+    except Exception as e:
+        print("RDS storage failed:", e)
 
 # --- Prediction Endpoint ---
 @app.post("/predict")
@@ -82,7 +130,6 @@ def predict_fraud(claim: InsuranceClaim):
 
     store_prediction(input_dict, result, overall_prob)
 
-    # Collect individual model probabilities
     individual_probs = {}
     if hasattr(model, "named_estimators_"):
         for name, estimator in model.named_estimators_.items():
