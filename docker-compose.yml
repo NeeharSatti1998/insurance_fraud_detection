@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.fastapi
+    container_name: fastapi_app
     ports:
       - "8000:8000"
     volumes:
@@ -14,7 +15,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.streamlit
+    container_name: streamlit_app
     ports:
       - "8501:8501"
+    depends_on:
+      - fastapi
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
     depends_on:
       - fastapi
