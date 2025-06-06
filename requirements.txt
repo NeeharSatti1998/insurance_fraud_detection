@@ -14,3 +14,4 @@ seaborn
 shap
 boto3
 pymysql
+prometheus_fastapi_instrumentator

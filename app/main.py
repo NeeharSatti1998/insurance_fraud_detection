@@ -6,8 +6,10 @@ import numpy as np
 import os
 import boto3
 import mysql.connector
+from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI()
+Instrumentator().instrument(app).expose(app)
 
 # --- S3 Model Loading ---
 MODEL_DIR = "/tmp/model"
