@@ -13,3 +13,4 @@ matplotlib
 seaborn
 shap
 boto3
+pymysql

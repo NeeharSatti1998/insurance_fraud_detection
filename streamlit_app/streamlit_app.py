@@ -4,23 +4,37 @@ from datetime import datetime
 import streamlit as st
 import requests
 import pandas as pd
+import pymysql
 
+# RDS credentials
+RDS_HOST = "insurance-fraud-db.cobaiu8aw8xi.us-east-1.rds.amazonaws.com"
+RDS_PORT = 3306
+RDS_DB = "insurance_fraud_db"
+RDS_USER = "admin"
+RDS_PASSWORD = "NeeharSatti1998"
 
-HISTORY_FILE = "streamlit_app/history.json"
-
-def load_history():
-    if not os.path.exists(HISTORY_FILE):
-        return []
-    with open(HISTORY_FILE, "r") as file:
-        return json.load(file)
-
-def save_history(entry):
-    os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
-    history = load_history()
-    history.append(entry)
-    history = history[-10:]  # Keep only last 10
-    with open(HISTORY_FILE, "w") as file:
-        json.dump(history, file, indent=4)
+def fetch_recent_predictions(limit=10):
+    try:
+        conn = pymysql.connect(
+            host=RDS_HOST,
+            user=RDS_USER,
+            password=RDS_PASSWORD,
+            database=RDS_DB,
+            port=RDS_PORT,
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT timestamp, prediction, probability 
+                FROM predictions 
+                ORDER BY timestamp DESC 
+                LIMIT %s
+            """, (limit,))
+            rows = cursor.fetchall()
+            return pd.DataFrame(rows) if rows else pd.DataFrame()
+    except Exception as e:
+        st.error(f"Error connecting to RDS: {e}")
+        return pd.DataFrame()
 
 API_URL = "http://fastapi:8000/predict"
 
@@ -138,23 +152,19 @@ if st.button("Predict Fraud"):
             for model_name, prob in result["individual_probabilities"].items():
                 st.write(f"- **{model_name.upper()}**: {prob:.2%}")
 
-        
-        history_entry = {
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "prediction": result['prediction'],
-            "probability": round(result['fraud_probability'], 4)
-        }
-        save_history(history_entry)
     else:
         st.error("Error: Failed to get prediction from API.")
+
+
 st.markdown("---")
 st.subheader("Prediction History")
 
-history = load_history()
-if history:
-    df_hist = pd.DataFrame(history)
-    st.bar_chart(df_hist.set_index("timestamp")["probability"])
-    st.dataframe(df_hist[::-1])  # Show most recent first
+
+rds_history = fetch_recent_predictions(limit=10)
+rds_history["timestamp"] = pd.to_datetime(rds_history["timestamp"]).dt.strftime("%Y-%m-%d %H:%M")
+if not rds_history.empty:
+    st.bar_chart(rds_history.set_index("timestamp")["probability"])
+    st.dataframe(rds_history)
 else:
-    st.write("No predictions yet.")
+    st.write("No prediction data available in RDS.")
 
