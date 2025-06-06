@@ -76,13 +76,24 @@ def predict_fraud(claim: InsuranceClaim):
     input_dict = claim.dict()
     processed_input = preprocess_input(input_dict)
 
+    # Final Soft Voting Result
     prediction = model.predict(processed_input)[0]
-    probability = round(model.predict_proba(processed_input)[0][1], 3)
+    overall_prob = round(model.predict_proba(processed_input)[0][1], 3)
     result = "FRAUD" if prediction == 1 else "NOT FRAUD"
 
-    store_prediction(input_dict, result, probability)
+    # Optional: Save later to RDS
+    store_prediction(input_dict, result, overall_prob)
+
+    # Individual estimator probabilities
+    individual_probs = {}
+    if hasattr(model, "named_estimators_"):  # VotingClassifier attribute
+        for name, estimator in model.named_estimators_.items():
+            if hasattr(estimator, "predict_proba"):  # Safety check
+                prob = estimator.predict_proba(processed_input)[0][1]
+                individual_probs[name] = round(prob, 3)
 
     return {
         "prediction": result,
-        "fraud_probability": probability
+        "fraud_probability": overall_prob,
+        "individual_probabilities": individual_probs
     }

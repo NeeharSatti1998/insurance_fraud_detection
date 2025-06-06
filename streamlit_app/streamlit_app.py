@@ -132,17 +132,21 @@ if st.button("Predict Fraud"):
         st.success(f"Prediction: {result['prediction']}")
         st.info(f"Fraud Probability: {result['fraud_probability']:.2%}")
 
+       
+        if "individual_probabilities" in result:
+            st.subheader("Model Breakdown (Individual Probabilities)")
+            for model_name, prob in result["individual_probabilities"].items():
+                st.write(f"- **{model_name.upper()}**: {prob:.2%}")
+
+        
         history_entry = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "prediction": result['prediction'],
             "probability": round(result['fraud_probability'], 4)
         }
         save_history(history_entry)
-
     else:
         st.error("Error: Failed to get prediction from API.")
-
-
 st.markdown("---")
 st.subheader("Prediction History")
 
