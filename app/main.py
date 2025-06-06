@@ -5,12 +5,11 @@ import pandas as pd
 import numpy as np
 import os
 import boto3
-from datetime import datetime
 
 app = FastAPI()
 
 # --- S3 Model Loading ---
-MODEL_DIR = "model"
+MODEL_DIR = "/tmp/model"  # Temporary dir in container
 MODEL_PATH = os.path.join(MODEL_DIR, "soft_voting_model_1.pkl")
 COLUMNS_PATH = os.path.join(MODEL_DIR, "model_columns.pkl")
 
