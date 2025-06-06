@@ -16,7 +16,7 @@ COLUMNS_PATH = os.path.join(MODEL_DIR, "model_columns.pkl")
 os.makedirs(MODEL_DIR, exist_ok=True)
 
 s3 = boto3.client('s3')
-BUCKET_NAME = "insurance-fraud-model-bucket"
+BUCKET_NAME = "insurance-model-bucket"
 
 def download_if_not_exists(s3_key, local_path):
     if not os.path.exists(local_path):
