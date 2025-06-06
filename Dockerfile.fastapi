@@ -15,7 +15,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install boto3 explicitly if not in requirements.txt
 RUN pip install --no-cache-dir boto3
 
-# Copy app and folders
+
+# Copy app
 COPY app/ app/
 
 
