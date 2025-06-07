@@ -10,9 +10,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_fastapi_instrumentator.metrics import latency
 
 app = FastAPI()
-instrumentator = Instrumentator()
-instrumentator.add(latency())
-instrumentator.instrument(app).expose(app)
+Instrumentator().instrument(app).expose(app)
 
 # --- S3 Model Loading ---
 MODEL_DIR = "/tmp/model"
