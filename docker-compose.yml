@@ -30,3 +30,15 @@ services:
       - "9090:9090"
     depends_on:
       - fastapi
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  grafana-storage:
