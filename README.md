@@ -1,7 +1,6 @@
-
 # Insurance Fraud Detection – MLOps Pipeline with Monitoring and Visualization
 
-This project is a full-stack MLOps pipeline for detecting insurance fraud using machine learning. It includes a FastAPI backend for predictions, Prometheus for metrics scraping, Streamlit for displaying results interactively, and Docker for orchestration.
+This project is a full-stack MLOps pipeline for detecting insurance fraud using machine learning. It includes a FastAPI backend for predictions, Prometheus for metrics scraping, Grafana for visualization, Streamlit for displaying results interactively, and Docker for orchestration.
 
 ---
 
@@ -9,19 +8,20 @@ This project is a full-stack MLOps pipeline for detecting insurance fraud using 
 
 **Components:**
 
-- **FastAPI:** Serves fraud predictions from a trained ML model.
-- **Prometheus:** Scrapes metrics from FastAPI for monitoring.
-- **Streamlit:** Web dashboard to view model predictions and user interface.
+- **FastAPI:** Serves fraud predictions from a trained ML model and exposes `/metrics` endpoint.
+- **Prometheus:** Scrapes metrics (latency, error rates, traffic) from FastAPI.
+- **Grafana:** Visualizes prediction latency, error rate, volume, and uptime via dashboards.
+- **Streamlit:** Web dashboard to view model predictions and interact via forms.
 - **Docker Compose:** Orchestrates all services.
 
 ---
 
 ## Machine Learning Model
 
-- **Models Used:** Soft Voting Classifier (ensemble of LightGBM, XGBoost, Logistic Regression)
-- **Input Features:** Includes categorical and numerical features like age, occupation, claim amount, policy details, etc.
-- **Output:** Binary classification – fraud or not fraud.
-- **Training:** Model is trained on a cleaned version of the insurance claim dataset and saved as `model/soft_voting_model_1.pkl`.
+- **Models Used:** Soft Voting Classifier (LightGBM, XGBoost, Logistic Regression)
+- **Input Features:** Age, occupation, claim amount, policy info, etc.
+- **Output:** Binary classification – fraud or not fraud
+- **Training:** Trained offline on a cleaned insurance dataset
 
 ---
 
@@ -36,70 +36,92 @@ insurance_risk/
 ├── model/
 │   └── soft_voting_model_1.pkl   # Trained ML model
 ├── requirements.txt              # Python dependencies
-├── Dockerfile                    # For FastAPI container
-├── Dockerfile.streamlit          # For Streamlit container
-├── docker-compose.yml            # Docker Compose config
-└── README.md                     # Project documentation
+├── Dockerfile                    # FastAPI container
+├── Dockerfile.streamlit          # Streamlit container
+├── docker-compose.yml            # Service orchestration
+└── README.md                     # Documentation
 ```
 
 ---
 
-## How It Works
+## API Endpoint
 
-### 1. FastAPI Prediction Endpoint
+### `POST /predict`
 
-- **URL:** `http://localhost:8000/predict`
-- **Accepts:** POST request with claim details
-- **Returns:**
-
+- Accepts JSON input of insurance claim features
+- Returns:
 ```json
 {
-  "prediction": "NOT FRAUD",
-  "fraud_probability": 0.058
+  "prediction": "FRAUD",
+  "fraud_probability": 0.734,
+  "individual_probabilities": {
+    "lightgbm": 0.69,
+    "xgboost": 0.74,
+    "logistic": 0.76
+  }
 }
 ```
 
 ---
 
-### 2. Streamlit Frontend
+## Streamlit Frontend
 
-- User inputs claim details via interactive widgets
-- Sends POST request to FastAPI
-- Displays prediction and fraud probability
-- Shows last 10 predictions as a history bar chart and table
+- Inputs user data via forms
+- Calls FastAPI endpoint and shows result
+- Displays last 10 predictions (bar + table)
 
 ---
 
 ## Dockerized Setup
 
-### Build and Run All Services
+### Build and Run
 
 ```bash
 docker-compose up --build
 ```
 
-### Containers Created
+Services launched:
 
-- `fraud_api` – FastAPI prediction backend
-- `streamlit_ui` – Streamlit frontend dashboard
-
----
-
-## Environment Configuration
-
-Ensure your `.env` is properly set if needed. All static configuration is within the `docker-compose.yml`.
+- `fraud_api`: FastAPI backend
+- `streamlit_ui`: Streamlit dashboard
+- `prometheus`: Metric scraping
+- `grafana`: Dashboard visualization
 
 ---
 
-## Monitoring (Optional)
+## Grafana Monitoring Dashboard
 
-Prometheus can be extended to track API performance by scraping `/metrics`. FastAPI exposes custom metrics if enabled.
+### Panels:
+
+1. **Avg Prediction Latency (Success)** – with red threshold (1s)
+2. **Prediction Volume Per Hour** – colored bars per status code
+3. **CPU and Memory Usage**
+4. **Model Prediction Error Rate (4xx)**
+5. **Model Prediction API Traffic**
+6. **Uptime Panel** – displays uptime in minutes
 
 ---
 
-## Future Improvements
+## Alerts Configured
 
-- Store predictions in a MySQL RDS database
-- Add Prometheus + Grafana for monitoring
-- Add authentication to Streamlit app
-- Deploy on AWS EC2 for full cloud hosting
+1. **High Prediction Latency (Success):**
+   - Triggers when avg latency > 1s
+2. **High Prediction Error Rate:**
+   - Triggers when rate of 4xx > 0.01
+3. **No Prediction Traffic:**
+   - Triggers if prediction volume is zero
+
+---
+
+## Uptime Tracking
+
+Panel: `time() - process_start_time_seconds` with unit set to minutes.
+
+---
+
+##  Future Enhancements
+
+- Add Slack/email notification for Grafana alerts
+- Horizontal scaling with load balancer
+- Streamlit login/authentication
+- CI/CD integration for auto-deployments
